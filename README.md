@@ -5,7 +5,7 @@ It can be directly connected to the WanVideo ATI Tracks Node.
 
 
 ## Example Workflow
-![workflow](https://github.com/user-attachments/assets/a9f72f24-ba17-40e6-869c-f0686ac8756c)
+![workflow](images/workflow.png)
 
 ## Changelog
 ### 2025-6-4
