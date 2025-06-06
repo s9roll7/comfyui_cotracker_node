@@ -31,7 +31,8 @@ class CoTrackerNode:
                     "default": 20,
                     "min": 0,
                     "max": 100,
-                    "step": 1
+                    "step": 1,
+                    "tooltip": "Number of divisions along both width and height to create a grid of tracking points."
                 }),
                 "max_num_of_points": ("INT", {
                     "default": 100,
@@ -52,7 +53,8 @@ class CoTrackerNode:
                     "default": 30,
                     "min": 0,
                     "max": 500,
-                    "step": 1
+                    "step": 1,
+                    "tooltip": "Minimum distance between tracking points"
                 }),
                 "force_offload": ("BOOLEAN", {"default": True}),
             }
@@ -136,6 +138,11 @@ class CoTrackerNode:
         video = self.preprocess_images(images)
         
         queries = self.prepare_query_points(points, video.shape)
+        
+        
+        if video.shape[1] <= self.model.step:
+            print(f"{video.shape[1]=}")
+            raise ValueError(f"At least {self.model.step+1} frames are required to perform tracking.")
         
         
         results = []
