@@ -9,7 +9,7 @@ Repository = "https://github.com/s9roll7/comfyui_cotracker_node"
 #  Used by Comfy Registry https://registry.comfy.org
 
 [tool.comfy]
-PublisherId = ""
+PublisherId = "s9roll74"
 DisplayName = "comfyui_cotracker_node"
 Icon = ""
 includes = []
