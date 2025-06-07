@@ -413,7 +413,6 @@ class CoTrackerNode:
                 if frame_idx < images_np.shape[0]:
                     cv2.circle(images_np[frame_idx], (int(x), int(y)), marker_radius, marker_color, marker_thickness)
             
-            point_track = [point_track]
             point_results += [json.dumps(point_track)]
         
         return point_results, images_np

@@ -48,7 +48,7 @@ class GridPointGeneratorNode:
         
         raw_data = []
         if existing_coordinates and len(existing_coordinates) > 0:        
-             raw_data = [[(d["x"], d["y"]) for d in json.loads(s)[0]] for s in existing_coordinates]
+             raw_data = [[(d["x"], d["y"]) for d in json.loads(s)] for s in existing_coordinates]
         
         # Generate grid points
         grid_points = []
@@ -76,7 +76,7 @@ class GridPointGeneratorNode:
             raw_data.append(point_frames)
         
         
-        result = [json.dumps([[{"x": x, "y": y} for x, y in coords]]) for coords in raw_data]
+        result = [json.dumps([{"x": x, "y": y} for x, y in coords]) for coords in raw_data]
         
         return (result,)
 
@@ -132,7 +132,7 @@ class XYMotionAmplifierNode:
             if len(mask.shape) == 3 and mask.shape[0] == 1:
                 mask = mask[0]
         
-        raw_data = [[(d["x"], d["y"]) for d in json.loads(s)[0]] for s in coordinates]
+        raw_data = [[(d["x"], d["y"]) for d in json.loads(s)] for s in coordinates]
         
         amplified_data = []
         for point_idx, point_frames in enumerate(raw_data):
@@ -190,7 +190,7 @@ class XYMotionAmplifierNode:
             images_with_markers = None
         
         
-        result = [json.dumps([[{"x": x, "y": y} for x, y in coords]]) for coords in amplified_data]
+        result = [json.dumps([{"x": x, "y": y} for x, y in coords]) for coords in amplified_data]
         
         return (result,images_with_markers)
         

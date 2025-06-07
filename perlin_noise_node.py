@@ -233,7 +233,7 @@ class PerlinCoordinateRandomizerNode:
                 noise_mask = noise_mask[0]
         
         
-        raw_data = [[(d["x"], d["y"]) for d in json.loads(s)[0]] for s in tracking_results]
+        raw_data = [[(d["x"], d["y"]) for d in json.loads(s)] for s in tracking_results]
         
         # Apply Perlin noise randomization
         randomized_data = randomize_coordinates_with_perlin(
@@ -251,7 +251,7 @@ class PerlinCoordinateRandomizerNode:
         else:
             images_with_markers = None
         
-        result = [json.dumps([[{"x": x, "y": y} for x, y in coords]]) for coords in randomized_data]
+        result = [json.dumps([{"x": x, "y": y} for x, y in coords]) for coords in randomized_data]
         
         return (result, images_with_markers)
     
