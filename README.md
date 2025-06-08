@@ -35,6 +35,9 @@ Amplifies coordinate movement with directional control for X/Y axes, preserving 
 - GridPointGeneratorNode  
 Generates a grid of coordinate points.
 
+### 2025-6-8
+Added the enable_backward option. This is an experimental feature intended for tracking objects that don't appear in the first frame.  
+Fixed a bug where the min_distance option was sometimes ignored.  
 
 
 ### Related resources

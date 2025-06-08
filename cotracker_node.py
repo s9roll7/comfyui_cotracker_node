@@ -7,7 +7,7 @@ import torchvision.transforms as transforms
 import gc
 
 import comfy.model_management as mm
-
+from .trajectory_integration import trajectory_integration
 
 
 class CoTrackerNode:
@@ -57,6 +57,7 @@ class CoTrackerNode:
                     "tooltip": "Minimum distance between tracking points"
                 }),
                 "force_offload": ("BOOLEAN", {"default": True}),
+                "enable_backward": ("BOOLEAN", {"default": False}),
             }
         }
     
@@ -121,7 +122,7 @@ class CoTrackerNode:
         
         return query_points_tensor
     
-    def track_points(self, images, tracking_points, grid_size, max_num_of_points, tracking_mask=None, confidence_threshold=0.5, min_distance=60, force_offload=True):
+    def track_points(self, images, tracking_points, grid_size, max_num_of_points, tracking_mask=None, confidence_threshold=0.5, min_distance=60, force_offload=True, enable_backward=False):
         
         self.load_model("cotracker3_online")
         
@@ -147,26 +148,31 @@ class CoTrackerNode:
         
         results = []
         
-        if len(points) > 0:
-            print(f"forward - queries")
+        def _tracking(video, grid_size, queries, add_support_grid):
             with torch.no_grad():
                 self.model(
                     video_chunk=video,
                     is_first_step=True,
-                    grid_size=0,
+                    grid_size=grid_size,
                     queries=queries,
-                    add_support_grid=True
+                    add_support_grid=add_support_grid
                 )
                 for ind in range(0, video.shape[1] - self.model.step, self.model.step):
                     pred_tracks, pred_visibility = self.model(
                         video_chunk=video[:, ind : ind + self.model.step * 2],
                         is_first_step=False,
-                        grid_size=0,
+                        grid_size=grid_size,
                         queries=queries,
-                        add_support_grid=True
+                        add_support_grid=add_support_grid
                     )  # B T N 2,  B T N 1
+                return pred_tracks, pred_visibility
+        
+        
+        if len(points) > 0:
+            print(f"forward - queries")
             
-            results, images_np = self.format_results(pred_tracks, pred_visibility, None, confidence_threshold, points, max_num_of_points, min_distance, images_np)
+            pred_tracks, pred_visibility = _tracking(video, 0, queries, True)
+            results, images_np = self.format_results(pred_tracks, pred_visibility, None, confidence_threshold, points, max_num_of_points, 1, images_np)
             
             print(f"{len(results)=}")
             
@@ -179,24 +185,16 @@ class CoTrackerNode:
         
         if grid_size > 0:
             print(f"forward - grid")
-            with torch.no_grad():
-                self.model(
-                    video_chunk=video,
-                    is_first_step=True,
-                    grid_size=grid_size,
-                    queries=None,
-                    add_support_grid=False
-                )
-                for ind in range(0, video.shape[1] - self.model.step, self.model.step):
-                    pred_tracks, pred_visibility = self.model(
-                        video_chunk=video[:, ind : ind + self.model.step * 2],
-                        is_first_step=False,
-                        grid_size=grid_size,
-                        queries=None,
-                        add_support_grid=False
-                    )  # B T N 2,  B T N 1
             
-            results2, images_np = self.format_results(pred_tracks, pred_visibility, tracking_mask, confidence_threshold, points, max_num_of_points, min_distance, images_np)
+            pred_tracks, pred_visibility = _tracking(video, grid_size, None, False)
+            
+            if enable_backward:
+                pred_tracks_b, pred_visibility_b = _tracking(video.flip(1), grid_size, None, False)
+                _,_,_,H,W = video.shape
+                pred_tracks, pred_visibility = trajectory_integration(pred_tracks, pred_visibility, pred_tracks_b, pred_visibility_b, (H,W) , grid_size)
+            
+            results2, images_np = self.format_results(pred_tracks, pred_visibility, tracking_mask, confidence_threshold, points, max_num_of_points, min_distance, images_np, enable_backward)
+            
             print(f"{len(results2)=}")
             
             results = results + results2
@@ -212,7 +210,6 @@ class CoTrackerNode:
         
         return (results,images_with_markers)
        
-    
     
     def select_diverse_points(self, motion_sorted_indices, tracks, visibility, max_points, min_distance):
         """
@@ -312,7 +309,8 @@ class CoTrackerNode:
         # 3. Point selection
         selected_indices = []
         
-        if len(valid_indices) <= max_points:
+#        if len(valid_indices) <= max_points:
+        if False:
             selected_indices = valid_indices.tolist()
         else:
             # Sort points in descending order of motion magnitude
@@ -336,10 +334,13 @@ class CoTrackerNode:
         return selected_indices
     
     
-    def format_results(self, tracks, visibility, mask, confidence_threshold, original_points, max_points, min_distance, images_np):
+    def format_results(self, tracks, visibility, mask, confidence_threshold, original_points, max_points, min_distance, images_np, enable_backward=False):
         # tracks : (B, T, N, 2) where B=batch, T=frames, N=points
         tracks = tracks.squeeze(0).cpu().numpy()  # (T, N, 2)
         visibility = visibility.squeeze(0).cpu().numpy()  # (T, N)
+        
+        if enable_backward:
+            confidence_threshold = 0
         
         num_frames, num_points, _ = tracks.shape
         
@@ -398,17 +399,25 @@ class CoTrackerNode:
                         "y": int(y),
                     })
                 else:
-                    # Use the previous coordinates
-                    if len(point_track) > 0:
-                        last_point = point_track[-1].copy()
-                        point_track.append(last_point)
-                        x = last_point["x"]
-                        y = last_point["y"]
-                    else:
+                    if enable_backward:
                         point_track.append({
-                            "x": int(x), 
-                            "y": int(y),
+                            "x": -100, 
+                            "y": -100,
                         })
+                        x = -100
+                        y = -100
+                    else:
+                        # Use the previous coordinates
+                        if len(point_track) > 0:
+                            last_point = point_track[-1].copy()
+                            point_track.append(last_point)
+                            x = last_point["x"]
+                            y = last_point["y"]
+                        else:
+                            point_track.append({
+                                "x": int(x), 
+                                "y": int(y),
+                            })
                  
                 if frame_idx < images_np.shape[0]:
                     cv2.circle(images_np[frame_idx], (int(x), int(y)), marker_radius, marker_color, marker_thickness)
