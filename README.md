@@ -39,6 +39,10 @@ Generates a grid of coordinate points.
 Added the enable_backward option. This is an experimental feature intended for tracking objects that don't appear in the first frame.  
 Fixed a bug where the min_distance option was sometimes ignored.  
 
+### 2025-6-24
+ver 1.0.3  
+Fixed a bug that could trigger errors in OpenCV functions.  
+Fixed an issue where certain mask shapes were not handled correctly.  
 
 ### Related resources
 - [CoTracker](https://github.com/facebookresearch/co-tracker)

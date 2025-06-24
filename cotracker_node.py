@@ -134,7 +134,7 @@ class CoTrackerNode:
             print(f"{tracking_mask.shape=}")
         
         images_np = images.cpu().numpy()
-        images_np = (images_np * 255).astype(np.uint8)
+        images_np = np.ascontiguousarray((images_np * 255).astype(np.uint8))
         
         video = self.preprocess_images(images)
         
@@ -347,7 +347,7 @@ class CoTrackerNode:
         def filter_by_mask(trs, vis, mask):
             if mask is not None:
                 mask = mask.cpu().numpy()
-                if len(mask.shape) == 3 and mask.shape[0] == 1:
+                while mask.ndim > 2 and mask.shape[0] == 1:
                     mask = mask[0]
                 
                 initial_coords = trs[0]  # (N, 2)
